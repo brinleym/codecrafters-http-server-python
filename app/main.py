@@ -1,6 +1,4 @@
 import socket
-from urllib.parse import urlsplit
-
 
 def main():
     OK = b"HTTP/1.1 200 OK\r\n\r\n"
@@ -13,14 +11,12 @@ def main():
     # Receive + parse request
     bytes = conn.recv(1024)
     data = bytes.decode()
-    print(data)
     parts = data.split(" ")
-    target_url = parts[1]
-    path = urlsplit(target_url).path
+    target = parts[1]
 
     # Handle request
     resp = OK
-    if len(path) > 0: #
+    if target != "/":
         resp = NOT_FOUND
 
     conn.sendall(resp)
