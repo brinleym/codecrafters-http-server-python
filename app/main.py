@@ -16,7 +16,10 @@ def main():
 
     # Handle request
     resp = OK
-    if target != "/":
+    if target.startswith("/echo"):
+        echo = target.split("/")[-1].encode()
+        resp += "Content-Type: text/plain\r\n" + f"Content-Length: {len(echo)}\r\n\r\n{echo}"
+    elif target != "/":
         resp = NOT_FOUND
 
     conn.sendall(resp)
