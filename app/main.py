@@ -19,7 +19,7 @@ def main():
     if target.startswith("/echo"):
         echo = target.split("/")[-1].encode()
         length = len(echo).to_bytes()
-        resp += b"Content-Type: text/plain\r\n" + b"Content-Length:" + length + b"\r\n\r\n" + echo
+        resp = b"HTTP/1.1 200 OK\r\n" + b"Content-Type: text/plain\r\n" + b"Content-Length:" + length + b"\r\n\r\n" + echo
     elif target != "/":
         resp = NOT_FOUND
 
