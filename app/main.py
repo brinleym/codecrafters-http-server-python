@@ -20,7 +20,7 @@ def parse_request(raw_bytes: bytes) -> HttpRequest:
     headers = {}
     for i in range(1, len(lines) - 1):
         header_type, value = lines[i].split(":", maxsplit=1)
-        headers[header_type.lower().strip()] = value.lower().strip()
+        headers[header_type.strip().lower()] = value.strip()
 
     return HttpRequest(method, target, version, headers)
 
