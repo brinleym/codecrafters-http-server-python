@@ -45,7 +45,7 @@ def parse_request(raw_bytes: bytes) -> HttpRequest:
 
     return HttpRequest(method, target, version, headers)
     
-def handle_conn(conn):
+def handle_conn(conn: socket):
     with conn:
         while True: 
             raw_bytes = conn.recv(1024) # Receive data from socket
@@ -61,6 +61,7 @@ def handle_conn(conn):
 def main():
     # Setup connection
     server_socket = socket.create_server(("localhost", 4221), reuse_port=True)
+    server_socket.listen()
 
     with server_socket:
         while True:
