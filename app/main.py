@@ -18,8 +18,11 @@ def parse_request(raw_bytes: bytes) -> HttpRequest:
 
     # headers
     headers = {}
-    for i in range(1, len(lines) - 1):
-        header_type, value = lines[i].split(":", maxsplit=1)
+    for line in lines[1:]:
+        if not line:
+            break
+        
+        header_type, value = line.split(":", maxsplit=1)
         headers[header_type.strip().lower()] = value.strip()
 
     return HttpRequest(method, target, version, headers)
