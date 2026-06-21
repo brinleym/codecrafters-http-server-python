@@ -17,8 +17,9 @@ def main():
     # Handle request
     resp = OK
     if target.startswith("/echo"):
-        echo = target.split("/")[-1]
-        resp += b"Content-Type: text/plain\r\n" + f"Content-Length: {len(echo)}\r\n\r\n{echo}".encode()
+        echo = target.split("/")[-1].encode()
+        length = len(echo).to_bytes()
+        resp += b"Content-Type: text/plain\r\n" + b"Content-Length:" + length + b"\r\n\r\n" + echo
     elif target != "/":
         resp = NOT_FOUND
 
