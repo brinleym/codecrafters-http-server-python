@@ -17,7 +17,7 @@ def route_request(request: HttpRequest) -> bytes:
     target = request.target
 
     if target == "/":
-        return f"HTTP/1.1 200 OK\r\n\r\n"
+        return b"HTTP/1.1 200 OK\r\n\r\n"
     elif target.startswith("/echo"):
         content = target.split("/")[-1].encode()
         content_length = str(len(content)).encode()
