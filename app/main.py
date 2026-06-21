@@ -11,7 +11,6 @@ class HttpRequest:
 def parse_request(raw_bytes: bytes) -> HttpRequest:
     request = raw_bytes.decode()
     lines = request.splitlines()
-    print(lines)
 
     # request line
     request_line = lines[0]
