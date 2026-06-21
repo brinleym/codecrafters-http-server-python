@@ -6,6 +6,7 @@ def main():
     server_socket = socket.create_server(("localhost", 4221), reuse_port=True)
     conn, _ = server_socket.accept() # wait for client
     conn.sendall(OK_RESP)
+    conn.close()
 
 
 if __name__ == "__main__":
