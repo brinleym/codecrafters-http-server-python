@@ -66,7 +66,7 @@ def main():
     with server_socket:
         while True:
             conn, _ = server_socket.accept()
-            thread = threading.Thread(target=handle_conn, args=(conn), daemon=True)
+            thread = threading.Thread(target=handle_conn, args=(conn,), daemon=True)
             thread.start()
 
 if __name__ == "__main__":
