@@ -13,6 +13,7 @@ def main():
     # Receive + parse request
     bytes = conn.recv(1024)
     data = bytes.decode()
+    print(data)
     parts = data.split(" ")
     target_url = parts[1]
     path = urlsplit(target_url).path
