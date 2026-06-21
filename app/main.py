@@ -11,7 +11,7 @@ def main():
     conn, _ = server_socket.accept() # wait for client
 
     # Receive + parse request
-    bytes = conn.recv()
+    bytes = conn.recv(1024)
     data = bytes.decode()
     parts = data.split(" ")
     target_url = parts[1]
