@@ -88,6 +88,8 @@ class HttpServer:
                 with open(file_path, "r") as file:
                     content = file.read()
                     return HttpResponse(HTTPStatusCode.OK, {"Content-Type": "application/octet-stream"}, content)
+            else:
+                return HttpResponse(HTTPStatusCode.NOT_FOUND)
         elif target == "/user-agent":
             user_agent_string = headers["user-agent"]
             return HttpResponse(HTTPStatusCode.OK, {"Content-Type": "text/plain"}, user_agent_string)
