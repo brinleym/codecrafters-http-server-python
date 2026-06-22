@@ -61,16 +61,6 @@ class HttpServer:
             encoded += f"{key}: {value}".encode() + self.CRLF
 
         return encoded + self.CRLF + body
-    
-    def read_file(self, filename: str) -> str:
-        if self.path == None:
-            raise RuntimeError("File mode unsupported: re-run server with --directory <dir>")
-        
-        file_path = Path(f"/{self.path}/{filename}")
-        with open(file_path, "r", encoding="utf-8") as file:
-            content = file.read()
-
-        return content
         
     def handle_request(self, request: HttpRequest) -> HttpResponse:
         target = request.target
