@@ -83,7 +83,7 @@ class HttpServer:
             return HttpResponse(HTTPStatusCode.OK, {"Content-Type": "text/plain"}, echo_string)
         elif target.startswith("/files"):
             filename = target.split("/")[-1]
-            file_path = Path(f"/{self.path}/{filename}")
+            file_path = Path(f"/{self.root}/{filename}")
             if file_path.exists():
                 with file_path as file:
                     content = file.read()
