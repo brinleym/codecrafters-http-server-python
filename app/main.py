@@ -146,7 +146,7 @@ class HttpServer:
                    
                     body_part += chunk
             
-                request = self.parse_request(raw_bytes)
+                request = self.parse_request(headers_part, body_part)
                 response = self.handle_request(request)
                 response_bytes = self.format_response(response)
                 conn.sendall(response_bytes)
