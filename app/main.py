@@ -85,7 +85,7 @@ class HttpServer:
             filename = target.split("/")[-1]
             file_path = Path(f"/{self.root}/{filename}")
             if file_path.exists():
-                with file_path as file:
+                with open(file_path, "r") as file:
                     content = file.read()
                     return HttpResponse(HTTPStatusCode.OK, {"Content-Type": "application/octet-stream"}, content)
         elif target == "/user-agent":
