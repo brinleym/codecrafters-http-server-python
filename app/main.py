@@ -171,7 +171,7 @@ def main():
             raise ValueError("Unsupported argument")
         root = arg2
     
-    # Setup connection
+    # Setup HTTP server
     server = HttpServer("localhost", 4221, root)
     server.start()
 
