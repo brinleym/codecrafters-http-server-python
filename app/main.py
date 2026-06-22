@@ -31,7 +31,7 @@ class HttpServer:
     def __init__(self, addr: str, port: int, dir: str):
         self.addr = addr
         self.port = port
-        self.path = Path(f"{dir}") if dir != None else None
+        self.root = Path(dir) if dir != None else None
         self.sock = socket.create_server((self.addr, self.port), reuse_port=True)
         self.sock.listen()
 
@@ -66,7 +66,7 @@ class HttpServer:
         if self.path == None:
             raise RuntimeError("File mode unsupported: re-run server with --directory <dir>")
         
-        file_path = self.path / Path(f"{filename}")
+        file_path = Path(f"/{self.path}/{filename}")
         with open(file_path, "r", encoding="utf-8") as file:
             content = file.read()
 
@@ -83,11 +83,11 @@ class HttpServer:
             return HttpResponse(HTTPStatusCode.OK, {"Content-Type": "text/plain"}, echo_string)
         elif target.startswith("/files"):
             filename = target.split("/")[-1]
-            try:
-                file_content = self.read_file(filename)
-                return HttpResponse(HTTPStatusCode.OK, {"Content-Type": "application/octet-stream"}, file_content)
-            except:
-                return HttpResponse(HTTPStatusCode.NOT_FOUND)
+            file_path = Path(f"/{self.path}/{filename}")
+            if file_path.exists():
+                with file_path as file:
+                    content = file.read()
+                    return HttpResponse(HTTPStatusCode.OK, {"Content-Type": "application/octet-stream"}, content)
         elif target == "/user-agent":
             user_agent_string = headers["user-agent"]
             return HttpResponse(HTTPStatusCode.OK, {"Content-Type": "text/plain"}, user_agent_string)
@@ -134,16 +134,16 @@ class HttpServer:
                 thread.start()
 
 def main():
-    dir = None
+    root = None
     # Parse arguments
     if len(sys.argv) > 2:
         arg1, arg2 = sys.argv[1], sys.argv[2]
         if arg1 != "--directory":
             raise ValueError("Unsupported argument")
-        dir = arg2[1:-1]
+        root = arg2
     
     # Setup connection
-    server = HttpServer("localhost", 4221, dir)
+    server = HttpServer("localhost", 4221, root)
     server.start()
 
 if __name__ == "__main__":
