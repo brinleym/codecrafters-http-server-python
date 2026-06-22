@@ -26,7 +26,6 @@ class HttpResponse:
     body: Union[str, bytes] = field(default_factory=str)
 
 class HttpServer:
-
     CRLF = b"\r\n"
     HTTP_VERSION = b"HTTP/1.1"
 
@@ -65,6 +64,33 @@ class HttpServer:
             encoded += f"{key}: {value}".encode() + self.CRLF
 
         return encoded + self.CRLF + body
+    
+    def handle_file_get(self, request: HttpRequest) -> HttpResponse:
+        filename = request.target.split("/")[-1]
+        file_path = Path(f"/{self.root}/{filename}")
+
+        if not file_path.exists():
+            return HttpResponse(HTTPStatusCode.NOT_FOUND)
+
+        with open(file_path, "r") as file:
+            content = file.read()
+
+        return HttpResponse(
+            HTTPStatusCode.OK,
+            {"Content-Type": "application/octet-stream"},
+            content,
+        )
+    
+    def handle_post(self, request: HttpRequest) -> HttpResponse:
+        if not request.target.startswith("/files"):
+            return HttpResponse(HTTPStatusCode.NOT_FOUND)
+        
+        filename = request.target.split("/")[-1]
+        file_path = Path(f"/{self.root}/{filename}")
+        with open(file_path, "w") as file:
+            file.write(request.body)
+        
+        return HttpResponse(HTTPStatusCode.CREATED)
         
     def handle_request(self, request: HttpRequest) -> HttpResponse:
         method = request.method
@@ -72,34 +98,20 @@ class HttpServer:
         headers = request.headers
 
         if method == "POST":
-            if target.startswith("/files"):
-                filename = target.split("/")[-1]
-                file_path = Path(f"/{self.root}/{filename}")
-                with open(file_path, "w") as file:
-                    file.write(request.body)
-                return HttpResponse(HTTPStatusCode.CREATED)
-            else:
-                return HttpResponse(HTTPStatusCode.NOT_FOUND)
+            return self.handle_post(request)
+
+        if target == "/":
+            return HttpResponse(HTTPStatusCode.OK)
+        elif target.startswith("/files"):
+            return self.handle_file_get(request)
+        elif target.startswith("/echo"):
+            echo_string = target.split("/")[-1]
+            return HttpResponse(HTTPStatusCode.OK, {"Content-Type": "text/plain"}, echo_string)
+        elif target == "/user-agent":
+            user_agent_string = headers["user-agent"]
+            return HttpResponse(HTTPStatusCode.OK, {"Content-Type": "text/plain"}, user_agent_string)
         else:
-            if target == "/":
-                return HttpResponse(HTTPStatusCode.OK)
-            elif target.startswith("/echo"):
-                echo_string = target.split("/")[-1]
-                return HttpResponse(HTTPStatusCode.OK, {"Content-Type": "text/plain"}, echo_string)
-            elif target.startswith("/files"):
-                filename = target.split("/")[-1]
-                file_path = Path(f"/{self.root}/{filename}")
-                if file_path.exists():
-                    with open(file_path, "r") as file:
-                        content = file.read()
-                        return HttpResponse(HTTPStatusCode.OK, {"Content-Type": "application/octet-stream"}, content)
-                else:
-                    return HttpResponse(HTTPStatusCode.NOT_FOUND)
-            elif target == "/user-agent":
-                user_agent_string = headers["user-agent"]
-                return HttpResponse(HTTPStatusCode.OK, {"Content-Type": "text/plain"}, user_agent_string)
-            else:
-                return HttpResponse(HTTPStatusCode.NOT_FOUND)
+            return HttpResponse(HTTPStatusCode.NOT_FOUND)
 
     def parse_request(self, headers_part: bytes, body_part: bytes) -> HttpRequest:
         headers_text = headers_part.decode()
