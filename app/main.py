@@ -140,7 +140,7 @@ def main():
         arg1, arg2 = sys.argv[1], sys.argv[2]
         if arg1 != "--directory":
             raise ValueError("Unsupported argument")
-        dir = arg2.strip("/")
+        dir = arg2[1:]
     
     # Setup connection
     server = HttpServer("localhost", 4221, dir)
