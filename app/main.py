@@ -8,6 +8,7 @@ import sys
 
 class HTTPStatusCode(IntEnum):
     OK = 200
+    CREATED = 201
     NOT_FOUND = 404
 
 @dataclass
@@ -74,6 +75,7 @@ class HttpServer:
                 file_path = Path(f"/{self.root}/{filename}")
                 with open(file_path, "w") as file:
                     file.write(request.body)
+                return HttpResponse(HTTPStatusCode.CREATED)
             else:
                 return HttpResponse(HTTPStatusCode.NOT_FOUND)
         else:
