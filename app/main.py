@@ -40,6 +40,8 @@ class HttpServer:
     def format_status_code(self, status_code: HTTPStatusCode) -> bytes:
         if status_code == HTTPStatusCode.OK:
             return b"200 OK"
+        elif status_code == HTTPStatusCode.CREATED:
+            return b"201 Created"
         elif status_code == HTTPStatusCode.NOT_FOUND:
             return b"404 Not Found"
         else:
