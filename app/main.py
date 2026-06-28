@@ -18,6 +18,7 @@ class HttpRequest:
     version: str
     headers: dict[str, str]
     body: str
+    accepted_encodings: list[str]
 
 @dataclass
 class HttpResponse:
@@ -96,6 +97,7 @@ class HttpServer:
         method = request.method
         target = request.target
         headers = request.headers
+        accepted_encodings = request.accepted_encodings
 
         if method == "POST":
             return self.handle_post(request)
@@ -108,7 +110,7 @@ class HttpServer:
         elif target.startswith("/echo"):
             echo_string = target.split("/")[-1]
             resp_headers = {"Content-Type": "text/plain"}
-            if "accept-encoding" in headers and headers["accept-encoding"] == "gzip":
+            if "gzip" in accepted_encodings:
                 resp_headers["Content-Encoding"] = "gzip"
 
             return HttpResponse(HTTPStatusCode.OK, resp_headers, echo_string)
@@ -132,10 +134,14 @@ class HttpServer:
             if not line:
                 break
 
-            header_type, value = line.split(":", maxsplit=1)
-            headers[header_type.strip().lower()] = value.strip()
+            header, value = line.split(":", maxsplit=1)
+            headers[header.strip().lower()] = value.strip()
 
-        return HttpRequest(method, target, version, headers, body_part.decode())
+        accepted_encodings = []
+        if "accept-encoding" in headers:
+            accepted_encodings = [encoding.strip() for encoding in value.split(",")]
+
+        return HttpRequest(method, target, version, headers, body_part.decode(), accepted_encodings)
         
     def handle_conn(self, conn: socket):
         with conn:
