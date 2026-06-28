@@ -100,13 +100,18 @@ class HttpServer:
         if method == "POST":
             return self.handle_post(request)
 
+        # method == GET
         if target == "/":
             return HttpResponse(HTTPStatusCode.OK)
         elif target.startswith("/files"):
             return self.handle_file_get(request)
         elif target.startswith("/echo"):
             echo_string = target.split("/")[-1]
-            return HttpResponse(HTTPStatusCode.OK, {"Content-Type": "text/plain"}, echo_string)
+            resp_headers = {"Content-Type": "text/plain"}
+            if "Accept-Encoding" in headers and headers["Accept-Encoding"] == "gzip":
+                resp_headers["Content-Encoding"] = "gzip"
+
+            return HttpResponse(HTTPStatusCode.OK, resp_headers, echo_string)
         elif target == "/user-agent":
             user_agent_string = headers["user-agent"]
             return HttpResponse(HTTPStatusCode.OK, {"Content-Type": "text/plain"}, user_agent_string)
