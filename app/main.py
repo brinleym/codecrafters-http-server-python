@@ -114,7 +114,7 @@ class HttpServer:
             
             if "gzip" in accepted_encodings:
                 resp_headers["Content-Encoding"] = "gzip"
-                echo_string = gzip.compress(echo_string)
+                echo_string = gzip.compress(echo_string.encode())
 
             return HttpResponse(HTTPStatusCode.OK, resp_headers, echo_string)
         elif target == "/user-agent":
