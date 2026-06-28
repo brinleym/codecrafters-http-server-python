@@ -1,5 +1,6 @@
 from dataclasses import dataclass, field
 from enum import IntEnum
+import gzip
 from pathlib import Path
 import threading
 from typing import Union
@@ -110,8 +111,10 @@ class HttpServer:
         elif target.startswith("/echo"):
             echo_string = target.split("/")[-1]
             resp_headers = {"Content-Type": "text/plain"}
+            
             if "gzip" in accepted_encodings:
                 resp_headers["Content-Encoding"] = "gzip"
+                echo_string = gzip.compress(echo_string)
 
             return HttpResponse(HTTPStatusCode.OK, resp_headers, echo_string)
         elif target == "/user-agent":
