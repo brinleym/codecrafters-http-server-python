@@ -108,7 +108,7 @@ class HttpServer:
         elif target.startswith("/echo"):
             echo_string = target.split("/")[-1]
             resp_headers = {"Content-Type": "text/plain"}
-            if "accept-encoding" in headers and headers["eccept-encoding"] == "gzip":
+            if "accept-encoding" in headers and headers["accept-encoding"] == "gzip":
                 resp_headers["Content-Encoding"] = "gzip"
 
             return HttpResponse(HTTPStatusCode.OK, resp_headers, echo_string)
