@@ -108,7 +108,7 @@ class HttpServer:
 
         response.headers.set(HttpHeaderName.CONTENT_LENGTH, str(len(body)))
 
-        encoded = self.HTTP_VERSION + b" " + response.status + self.CRLF
+        encoded = self.HTTP_VERSION + b" " + response.status.encode() + self.CRLF
 
         for name, value in response.headers.items():
             encoded += f"{name}: {value}".encode() + self.CRLF
