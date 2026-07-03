@@ -29,29 +29,32 @@ class HTTPHeaders:
             self.headers[name.strip().lower()] = value.strip()
 
     def contains(self, name: str) -> bool:
-        return name.strip().lower() in self.headers
+        return self._normalize(name) in self.headers
     
     def has_token(self, name: str, value: str) -> bool:
-        return self.headers.get(name) == value
+        return self.headers.get(self._normalize(name)) == value
     
     def get(self, name: str) -> str:
-        return self.headers.get(name)
+        return self.headers.get(self._normalize(name))
     
     def tokens(self, name: str) -> list[str]:
-        value = self.headers.get(name)
-        return [tok.strip() for tok in value.split(",")] if value != None else []
+        value = self.headers.get(self._normalize(name))
+        return [self._normalize(tok) for tok in value.split(",")] if value != None else []
     
     def set(self, name: str, value: str) -> None:
-        self.headers[name] = value
+        self.headers[self._normalize(name)] = self._normalize(value)
 
     def remove(self, name: str) -> None:
-        del self.headers[name]
+        del self.headers[self._normalize(name)]
 
     def clear(self) -> None:
         self.headers.clear()
 
     def items(self) -> list[tuple[str, str]]:
         return [(name, value) for name, value in self.headers.items()]
+    
+    def _normalize(self, text: str) -> str:
+        return text.strip().lower()
 
 @dataclass
 class HttpRequest:
