@@ -151,7 +151,7 @@ class HttpServer:
 
             if not file_path.exists():
                 return HttpResponse(
-                    stauts=HTTPStatusCode.NOT_FOUND, 
+                    status=HTTPStatusCode.NOT_FOUND, 
                     headers=resp_headers, 
                     should_close_connection=should_close_connection
                 )
