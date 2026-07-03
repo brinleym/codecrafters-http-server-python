@@ -16,12 +16,12 @@ class HTTPStatusCode(StrEnum):
     NOT_FOUND = "404 Not Found"
 
 class HttpHeaderName(StrEnum):
-    ACCEPT_ENCODING = "Accept-Encoding"
-    CONNECTION = "Connection"
-    CONTENT_ENCODING = "Content-Encoding"
-    CONTENT_LENGTH = "Content-Length"
-    CONTENT_TYPE = "Content-Type"
-    USER_AGENT = "User-Agent"
+    ACCEPT_ENCODING = "accept-encoding"
+    CONNECTION = "connection"
+    CONTENT_ENCODING = "content-encoding"
+    CONTENT_LENGTH = "content-length"
+    CONTENT_TYPE = "content-type"
+    USER_AGENT = "user-agent"
 
 @dataclass
 class HTTPHeaders:
@@ -219,7 +219,7 @@ class HttpServer:
             while True: 
                 raw_bytes = b""
                 
-                while not b"\r\n\r\n" in raw_bytes:
+                while not b"\r\n\r\n" in raw_bytes: # read headers
                     chunk = conn.recv(4096)
                     if not chunk: # connection closed
                         return
@@ -235,7 +235,7 @@ class HttpServer:
                         content_length = int(line.split(":")[1].strip())
                         break
 
-                while len(body_part) < content_length:
+                while len(body_part) < content_length: # read body
                     remaining_bytes = content_length - len(body_part)
                     
                     chunk = conn.recv(min(4096, remaining_bytes))
