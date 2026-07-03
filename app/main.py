@@ -14,7 +14,11 @@ class HTTPStatusCode(IntEnum):
 
 class HttpHeaderName(StrEnum):
     ACCEPT_ENCODING = "Accept-Encoding"
+    CONNECTION = "Connection"
+    CONTENT_ENCODING = "Content-Encoding"
     CONTENT_LENGTH = "Content-Length"
+    CONTENT_TYPE = "Content-Type"
+    USER_AGENT = "User-Agent"
 
 @dataclass
 class HTTPHeaders:
@@ -102,7 +106,7 @@ class HttpServer:
             else response.body
         )
 
-        response.headers.set("content-length", str(len(body)))
+        response.headers.set(HttpHeaderName.CONTENT_LENGTH, str(len(body)))
 
         encoded = self.HTTP_VERSION + b" " + self.format_status_code(response.status) + self.CRLF
 
@@ -118,10 +122,10 @@ class HttpServer:
         resp_headers = HTTPHeaders()
 
         should_close_connection = (
-            request.headers.has_token("connection", "close")
+            request.headers.has_token(HttpHeaderName.CONNECTION, "close")
         )
         if should_close_connection:
-            resp_headers.set("connection", "close")
+            resp_headers.set(HttpHeaderName.CONNECTION, "close")
 
         if method == "POST":
             if not request.target.startswith("/files"):
@@ -149,7 +153,7 @@ class HttpServer:
             with open(file_path, "r") as file:
                 content = file.read()
 
-            resp_headers.set("content-type", "application/octet-stream")
+            resp_headers.set(HttpHeaderName.CONTENT_TYPE, "application/octet-stream")
 
             return HttpResponse(
                 HTTPStatusCode.OK,
@@ -160,17 +164,17 @@ class HttpServer:
         
         elif target.startswith("/echo"):
             echo_string = target.split("/")[-1]
-            resp_headers.set("content-type", "text/plain")
+            resp_headers.set(HttpHeaderName.CONTENT_TYPE, "text/plain")
             
             if "gzip" in request.accepted_encodings():
-                resp_headers.set("content-encoding", "gzip")
+                resp_headers.set(HttpHeaderName.CONTENT_ENCODING, "gzip")
                 echo_string = gzip.compress(echo_string.encode())
 
             return HttpResponse(HTTPStatusCode.OK, resp_headers, echo_string, should_close_connection)
         
         elif target == "/user-agent":
-            user_agent_string = request.headers.get("user-agent")
-            resp_headers.set("content-type", "text/plain")
+            user_agent_string = request.headers.get(HttpHeaderName.USER_AGENT)
+            resp_headers.set(HttpHeaderName.CONTENT_TYPE, "text/plain")
             return HttpResponse(HTTPStatusCode.OK, resp_headers, user_agent_string, should_close_connection)
         
         else:
