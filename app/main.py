@@ -74,10 +74,13 @@ class HttpServer:
         headers = request.headers
         accepted_encodings = request.accepted_encodings
 
-        resp_headers = defaultdict(str)
-        if "connection" in headers and headers["connection"] == "close":
+        resp_headers = {}
+        should_close_connection = (
+            headers.get("connection", "") == "close"
+        )
+
+        if should_close_connection:
             resp_headers["connection"] = "close"
-        should_close_connection = resp_headers["connection"] == "close"
 
         if method == "POST":
             if not request.target.startswith("/files"):
@@ -158,10 +161,10 @@ class HttpServer:
             while True: 
                 raw_bytes = b""
                 
-                while b"\r\n\r\n" not in raw_bytes:
+                while not b"\r\n\r\n" in raw_bytes:
                     chunk = conn.recv(4096)
-                    if not chunk:
-                        break
+                    if not chunk: # connection closed
+                        return
                     
                     raw_bytes += chunk
 
