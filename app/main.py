@@ -30,6 +30,10 @@ class HTTPHeaders:
     def get(self, name: str) -> str:
         return self.headers.get(name)
     
+    def tokens(self, name: str) -> list[str]:
+        value = self.headers.get(name)
+        return [tok.strip() for tok in value.split(",")]
+    
     def has_token(self, name: str, value: str) -> str:
         return self.headers.get(name) == value
     
@@ -49,6 +53,9 @@ class HttpRequest:
     version: str
     headers: HTTPHeaders
     body: str
+
+    def accepted_encodings(self) -> list[str]:
+        return self.headers.tokens("accept-encoding")
 
 @dataclass
 class HttpResponse:
@@ -100,7 +107,6 @@ class HttpServer:
     def handle_request(self, request: HttpRequest) -> HttpResponse:
         method = request.method
         target = request.target
-        accepted_encodings = request.accepted_encodings
 
         resp_headers = HTTPHeaders()
 
@@ -149,7 +155,7 @@ class HttpServer:
             echo_string = target.split("/")[-1]
             resp_headers.set("content-type", "text/plain")
             
-            if "gzip" in accepted_encodings:
+            if "gzip" in request.accepted_encodings():
                 resp_headers.set("content-encoding", "gzip")
                 echo_string = gzip.compress(echo_string.encode())
 
