@@ -78,6 +78,22 @@ class HttpResponse:
     body: Union[str, bytes] = field(default_factory=str)
     should_close_connection: bool = False
 
+    def serialize(self) -> bytes:
+        body = (
+            self.body.encode()
+            if isinstance(self.body, str)
+            else self.body
+        )
+
+        self.headers.set(HttpHeaderName.CONTENT_LENGTH, str(len(body)))
+
+        headers = self.HTTP_VERSION + b" " + self.status.encode() + self.CRLF
+
+        for name, value in self.headers.items():
+            headers += f"{name}: {value}".encode() + self.CRLF
+
+        return headers + self.CRLF + body
+
 class HttpServer:
     CRLF = b"\r\n"
     HTTP_VERSION = b"HTTP/1.1"
@@ -88,22 +104,6 @@ class HttpServer:
         self.root = Path(dir)
         self.sock = socket.create_server((self.addr, self.port), reuse_port=True)
         self.sock.listen()
-
-    def format_response(self, response: HttpResponse) -> bytes:
-        body = (
-            response.body.encode()
-            if isinstance(response.body, str)
-            else response.body
-        )
-
-        response.headers.set(HttpHeaderName.CONTENT_LENGTH, str(len(body)))
-
-        encoded = self.HTTP_VERSION + b" " + response.status.encode() + self.CRLF
-
-        for name, value in response.headers.items():
-            encoded += f"{name}: {value}".encode() + self.CRLF
-
-        return encoded + self.CRLF + body
         
     def handle_request(self, request: HttpRequest) -> HttpResponse:
         method = request.method
@@ -246,9 +246,8 @@ class HttpServer:
             
                 request = self.parse_request(headers_part, body_part)
                 response = self.handle_request(request)
-                response_bytes = self.format_response(response)
                 
-                conn.sendall(response_bytes)
+                conn.sendall(response.serialize())
                 
                 if response.should_close_connection:
                     conn.close()
