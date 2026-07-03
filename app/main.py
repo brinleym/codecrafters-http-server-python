@@ -35,7 +35,7 @@ class HTTPHeaders:
     
     def tokens(self, name: str) -> list[str]:
         value = self.headers.get(name)
-        return [tok.strip() for tok in value.split(",")]
+        return [tok.strip() for tok in value.split(",")] if value != None else value
     
     def set(self, name: str, value: str) -> None:
         self.headers[name] = value
