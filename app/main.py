@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from enum import IntEnum, StrEnum
+from enum import StrEnum
 import gzip
 from pathlib import Path
 import threading
@@ -88,16 +88,6 @@ class HttpServer:
         self.root = Path(dir) if dir != None else None
         self.sock = socket.create_server((self.addr, self.port), reuse_port=True)
         self.sock.listen()
-
-    def format_status_code(self, status_code: HTTPStatusCode) -> bytes:
-        if status_code == HTTPStatusCode.OK:
-            return b"200 OK"
-        elif status_code == HTTPStatusCode.CREATED:
-            return b"201 Created"
-        elif status_code == HTTPStatusCode.NOT_FOUND:
-            return b"404 Not Found"
-        else:
-            raise ValueError("Unsupported status code")
 
     def format_response(self, response: HttpResponse) -> bytes:
         body = (
