@@ -7,10 +7,10 @@ from typing import Union
 import socket
 import sys
 
-class HTTPStatusCode(IntEnum):
-    OK = 200
-    CREATED = 201
-    NOT_FOUND = 404
+class HTTPStatusCode(StrEnum):
+    OK = "200 OK"
+    CREATED = "201 Created"
+    NOT_FOUND = "404 Not Found"
 
 class HttpHeaderName(StrEnum):
     ACCEPT_ENCODING = "Accept-Encoding"
@@ -108,7 +108,7 @@ class HttpServer:
 
         response.headers.set(HttpHeaderName.CONTENT_LENGTH, str(len(body)))
 
-        encoded = self.HTTP_VERSION + b" " + self.format_status_code(response.status) + self.CRLF
+        encoded = self.HTTP_VERSION + b" " + response.status + self.CRLF
 
         for name, value in response.headers.items():
             encoded += f"{name}: {value}".encode() + self.CRLF
