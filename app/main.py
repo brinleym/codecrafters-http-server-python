@@ -85,7 +85,7 @@ class HttpServer:
     def __init__(self, addr: str, port: int, dir: str):
         self.addr = addr
         self.port = port
-        self.root = Path(dir) if dir != None else None
+        self.root = Path(dir)
         self.sock = socket.create_server((self.addr, self.port), reuse_port=True)
         self.sock.listen()
 
@@ -202,15 +202,15 @@ class HttpServer:
 
     def parse_request(self, headers_part: bytes, body_part: bytes) -> HttpRequest:
         headers_text = headers_part.decode()
-        lines = headers_text.splitlines()
+        header_lines = headers_text.splitlines()
 
         # request line
-        request_line = lines[0]
+        request_line = header_lines[0]
         method, target, version = request_line.split()
 
         # headers
         headers = HTTPHeaders()
-        headers.parse(lines[1:])
+        headers.parse(header_lines[1:])
 
         return HttpRequest(method, target, version, headers, body_part.decode())
         
@@ -261,7 +261,7 @@ class HttpServer:
                 thread.start()
 
 def main():
-    root = None
+    root = "/"
     # Parse arguments
     if len(sys.argv) > 2:
         arg1, arg2 = sys.argv[1], sys.argv[2]
