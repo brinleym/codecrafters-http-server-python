@@ -12,6 +12,10 @@ class HTTPStatusCode(IntEnum):
     CREATED = 201
     NOT_FOUND = 404
 
+class HttpHeaderName(StrEnum):
+    ACCEPT_ENCODING = "Accept-Encoding"
+    CONTENT_LENGTH = "Content-Length"
+
 @dataclass
 class HTTPHeaders:
     headers: dict[str, str] = field(default_factory=dict)
@@ -27,7 +31,7 @@ class HTTPHeaders:
     def contains(self, name: str) -> bool:
         return name.strip().lower() in self.headers
     
-    def has_token(self, name: str, value: str) -> str:
+    def has_token(self, name: str, value: str) -> bool:
         return self.headers.get(name) == value
     
     def get(self, name: str) -> str:
@@ -58,7 +62,7 @@ class HttpRequest:
     body: str
 
     def accepted_encodings(self) -> list[str]:
-        return self.headers.tokens("accept-encoding")
+        return self.headers.tokens(HttpHeaderName.ACCEPT_ENCODING)
 
 @dataclass
 class HttpResponse:
