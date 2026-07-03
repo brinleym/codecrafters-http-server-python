@@ -1,3 +1,4 @@
+from collections import defaultdict
 from dataclasses import dataclass, field
 from enum import IntEnum
 import gzip
@@ -66,62 +67,68 @@ class HttpServer:
             encoded += f"{key}: {value}".encode() + self.CRLF
 
         return encoded + self.CRLF + body
-    
-    def handle_file_get(self, request: HttpRequest) -> HttpResponse:
-        filename = request.target.split("/")[-1]
-        file_path = Path(f"/{self.root}/{filename}")
-
-        if not file_path.exists():
-            return HttpResponse(HTTPStatusCode.NOT_FOUND)
-
-        with open(file_path, "r") as file:
-            content = file.read()
-
-        return HttpResponse(
-            HTTPStatusCode.OK,
-            {"Content-Type": "application/octet-stream"},
-            content,
-        )
-    
-    def handle_post(self, request: HttpRequest) -> HttpResponse:
-        if not request.target.startswith("/files"):
-            return HttpResponse(HTTPStatusCode.NOT_FOUND)
         
-        filename = request.target.split("/")[-1]
-        file_path = Path(f"/{self.root}/{filename}")
-        with open(file_path, "w") as file:
-            file.write(request.body)
-        
-        return HttpResponse(HTTPStatusCode.CREATED)
-        
-    def handle_request(self, request: HttpRequest) -> HttpResponse:
+    def handle_request(self, request: HttpRequest) -> tuple[HttpResponse, bool]:
         method = request.method
         target = request.target
         headers = request.headers
         accepted_encodings = request.accepted_encodings
 
+        resp_headers = defaultdict(str)
+        if "connection" in headers and headers["connection"] == "close":
+            resp_headers["connection"] = "close"
+        should_close_connection = resp_headers["connection"] == "close"
+
         if method == "POST":
-            return self.handle_post(request)
+            if not request.target.startswith("/files"):
+                return HttpResponse(HTTPStatusCode.NOT_FOUND, resp_headers), should_close_connection
+            
+            filename = request.target.split("/")[-1]
+            file_path = Path(f"/{self.root}/{filename}")
+            with open(file_path, "w") as file:
+                file.write(request.body)
+            
+            return HttpResponse(HTTPStatusCode.CREATED, resp_headers), should_close_connection
 
         # method == GET
         if target == "/":
-            return HttpResponse(HTTPStatusCode.OK)
+            return HttpResponse(HTTPStatusCode.OK, resp_headers), should_close_connection
+        
         elif target.startswith("/files"):
-            return self.handle_file_get(request)
+            filename = request.target.split("/")[-1]
+            file_path = Path(f"/{self.root}/{filename}")
+
+            if not file_path.exists():
+                return HttpResponse(HTTPStatusCode.NOT_FOUND, resp_headers), should_close_connection
+
+            with open(file_path, "r") as file:
+                content = file.read()
+
+            resp_headers["content-type"] = "application/octet-stream"
+
+            return HttpResponse(
+                HTTPStatusCode.OK,
+                resp_headers,
+                content,
+            ), should_close_connection
+        
         elif target.startswith("/echo"):
             echo_string = target.split("/")[-1]
-            resp_headers = {"Content-Type": "text/plain"}
+            resp_headers["content-type"] = "text/plain"
             
             if "gzip" in accepted_encodings:
-                resp_headers["Content-Encoding"] = "gzip"
+                resp_headers["content-encoding"] = "gzip"
                 echo_string = gzip.compress(echo_string.encode())
 
-            return HttpResponse(HTTPStatusCode.OK, resp_headers, echo_string)
+            return HttpResponse(HTTPStatusCode.OK, resp_headers, echo_string), should_close_connection
+        
         elif target == "/user-agent":
             user_agent_string = headers["user-agent"]
-            return HttpResponse(HTTPStatusCode.OK, {"Content-Type": "text/plain"}, user_agent_string)
+            resp_headers["content-type"] = "text/plain"
+            return HttpResponse(HTTPStatusCode.OK, resp_headers, user_agent_string), should_close_connection
+        
         else:
-            return HttpResponse(HTTPStatusCode.NOT_FOUND)
+            return HttpResponse(HTTPStatusCode.NOT_FOUND, resp_headers), should_close_connection
 
     def parse_request(self, headers_part: bytes, body_part: bytes) -> HttpRequest:
         headers_text = headers_part.decode()
@@ -177,9 +184,11 @@ class HttpServer:
                     body_part += chunk
             
                 request = self.parse_request(headers_part, body_part)
-                response = self.handle_request(request)
+                response, should_close_connection = self.handle_request(request)
                 response_bytes = self.format_response(response)
                 conn.sendall(response_bytes)
+                if should_close_connection:
+                    conn.close()
 
     def start(self):
         with self.sock:
