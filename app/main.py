@@ -119,7 +119,11 @@ class HttpServer:
 
         if method == "POST":
             if not request.target.startswith("/files"):
-                return HttpResponse(HTTPStatusCode.NOT_FOUND, resp_headers, "", should_close_connection)
+                return HttpResponse(
+                    status=HTTPStatusCode.NOT_FOUND, 
+                    headers=resp_headers, 
+                    should_close_connection=should_close_connection
+                )
             
             filename = request.target.split("/")[-1]
             file_path = Path(f"/{self.root}/{filename}")
@@ -127,18 +131,30 @@ class HttpServer:
             with open(file_path, "w") as file:
                 file.write(request.body)
             
-            return HttpResponse(HTTPStatusCode.CREATED, resp_headers, "", should_close_connection)
+            return HttpResponse(
+                status=HTTPStatusCode.CREATED, 
+                headers=resp_headers, 
+                should_close_connection=should_close_connection
+            )
 
         # method == GET
         if target == "/":
-            return HttpResponse(HTTPStatusCode.OK, resp_headers, "", should_close_connection)
+            return HttpResponse(
+                status=HTTPStatusCode.OK, 
+                headers=resp_headers, 
+                should_close_connection=should_close_connection
+            )
         
         elif target.startswith("/files"):
             filename = request.target.split("/")[-1]
             file_path = Path(f"/{self.root}/{filename}")
 
             if not file_path.exists():
-                return HttpResponse(HTTPStatusCode.NOT_FOUND, resp_headers, "", should_close_connection)
+                return HttpResponse(
+                    stauts=HTTPStatusCode.NOT_FOUND, 
+                    headers=resp_headers, 
+                    should_close_connection=should_close_connection
+                )
 
             with open(file_path, "r") as file:
                 content = file.read()
@@ -146,10 +162,10 @@ class HttpServer:
             resp_headers.set(HttpHeaderName.CONTENT_TYPE, "application/octet-stream")
 
             return HttpResponse(
-                HTTPStatusCode.OK,
-                resp_headers,
-                content,
-                should_close_connection
+                status=HTTPStatusCode.OK,
+                headers=resp_headers,
+                body=content,
+                should_close_connection=should_close_connection
             )
         
         elif target.startswith("/echo"):
@@ -160,15 +176,29 @@ class HttpServer:
                 resp_headers.set(HttpHeaderName.CONTENT_ENCODING, "gzip")
                 echo_string = gzip.compress(echo_string.encode())
 
-            return HttpResponse(HTTPStatusCode.OK, resp_headers, echo_string, should_close_connection)
+            return HttpResponse(
+                status=HTTPStatusCode.OK, 
+                headers=resp_headers, 
+                body=echo_string, 
+                should_close_connection=should_close_connection
+            )
         
         elif target == "/user-agent":
             user_agent_string = request.headers.get(HttpHeaderName.USER_AGENT)
             resp_headers.set(HttpHeaderName.CONTENT_TYPE, "text/plain")
-            return HttpResponse(HTTPStatusCode.OK, resp_headers, user_agent_string, should_close_connection)
+            return HttpResponse(
+                status=HTTPStatusCode.OK, 
+                headers=resp_headers, 
+                body=user_agent_string, 
+                should_close_connection=should_close_connection
+            )
         
         else:
-            return HttpResponse(HTTPStatusCode.NOT_FOUND, resp_headers, "", should_close_connection)
+            return HttpResponse(
+                status=HTTPStatusCode.NOT_FOUND, 
+                headers=resp_headers, 
+                should_close_connection=should_close_connection
+            )
 
     def parse_request(self, headers_part: bytes, body_part: bytes) -> HttpRequest:
         headers_text = headers_part.decode()
