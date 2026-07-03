@@ -27,15 +27,15 @@ class HTTPHeaders:
     def contains(self, name: str) -> bool:
         return name.strip().lower() in self.headers
     
+    def has_token(self, name: str, value: str) -> str:
+        return self.headers.get(name) == value
+    
     def get(self, name: str) -> str:
         return self.headers.get(name)
     
     def tokens(self, name: str) -> list[str]:
         value = self.headers.get(name)
         return [tok.strip() for tok in value.split(",")]
-    
-    def has_token(self, name: str, value: str) -> str:
-        return self.headers.get(name) == value
     
     def set(self, name: str, value: str) -> None:
         self.headers[name] = value
@@ -45,6 +45,9 @@ class HTTPHeaders:
 
     def clear(self) -> None:
         self.headers.clear()
+
+    def items(self) -> list[tuple[str, str]]:
+        return [(name, value) for name, value in self.headers.items()]
 
 @dataclass
 class HttpRequest:
@@ -92,15 +95,12 @@ class HttpServer:
             else response.body
         )
 
-        headers = {
-            **response.headers,
-            "Content-Length": str(len(body)),
-        }
+        response.headers.set("content-length", str(len(body)))
 
         encoded = self.HTTP_VERSION + b" " + self.format_status_code(response.status) + self.CRLF
 
-        for key, value in headers.items():
-            encoded += f"{key}: {value}".encode() + self.CRLF
+        for name, value in response.headers.items():
+            encoded += f"{name}: {value}".encode() + self.CRLF
 
         return encoded + self.CRLF + body
         
