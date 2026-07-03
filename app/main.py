@@ -178,7 +178,8 @@ class HttpServer:
         method, target, version = request_line.split()
 
         # headers
-        headers = HTTPHeaders(lines[1:])
+        headers = HTTPHeaders()
+        headers.parse(lines[1:])
 
         return HttpRequest(method, target, version, headers, body_part.decode())
         
