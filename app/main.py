@@ -7,6 +7,9 @@ from typing import Union
 import socket
 import sys
 
+CRLF = b"\r\n"
+HTTP_VERSION = b"HTTP/1.1"
+
 class HTTPStatusCode(StrEnum):
     OK = "200 OK"
     CREATED = "201 Created"
@@ -87,17 +90,14 @@ class HttpResponse:
 
         self.headers.set(HttpHeaderName.CONTENT_LENGTH, str(len(body)))
 
-        headers = self.HTTP_VERSION + b" " + self.status.encode() + self.CRLF
+        headers = HTTP_VERSION + b" " + self.status.encode() + CRLF
 
         for name, value in self.headers.items():
-            headers += f"{name}: {value}".encode() + self.CRLF
+            headers += f"{name}: {value}".encode() + CRLF
 
-        return headers + self.CRLF + body
+        return headers + CRLF + body
 
 class HttpServer:
-    CRLF = b"\r\n"
-    HTTP_VERSION = b"HTTP/1.1"
-
     def __init__(self, addr: str, port: int, dir: str):
         self.addr = addr
         self.port = port
