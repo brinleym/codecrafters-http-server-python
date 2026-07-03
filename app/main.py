@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from enum import IntEnum
+from enum import IntEnum, StrEnum
 import gzip
 from pathlib import Path
 import threading
@@ -13,19 +13,49 @@ class HTTPStatusCode(IntEnum):
     NOT_FOUND = 404
 
 @dataclass
+class HTTPHeaders:
+    headers: dict[str, str] = field(default_factory=dict)
+
+    def parse(self, text: str) -> None:
+        for line in text:
+            if not line:
+                break
+
+            name, value = line.split(":", maxsplit=1)
+            self.headers[name.strip().lower()] = value.strip()
+
+    def contains(self, name: str) -> bool:
+        return name.strip().lower() in self.headers
+    
+    def get(self, name: str) -> str:
+        return self.headers.get(name)
+    
+    def has_token(self, name: str, value: str) -> str:
+        return self.headers.get(name) == value
+    
+    def set(self, name: str, value: str) -> None:
+        self.headers[name] = value
+
+    def remove(self, name: str) -> None:
+        del self.headers[name]
+
+    def clear(self) -> None:
+        self.headers.clear()
+
+@dataclass
 class HttpRequest:
     method: str
     target: str
     version: str
-    headers: dict[str, str]
+    headers: HTTPHeaders
     body: str
-    accepted_encodings: list[str]
 
 @dataclass
 class HttpResponse:
     status: HTTPStatusCode
-    headers: dict[str, str] = field(default_factory=dict)
+    headers: HTTPHeaders
     body: Union[str, bytes] = field(default_factory=str)
+    should_close_connection: bool = False
 
 class HttpServer:
     CRLF = b"\r\n"
@@ -67,70 +97,71 @@ class HttpServer:
 
         return encoded + self.CRLF + body
         
-    def handle_request(self, request: HttpRequest) -> tuple[HttpResponse, bool]:
+    def handle_request(self, request: HttpRequest) -> HttpResponse:
         method = request.method
         target = request.target
-        headers = request.headers
         accepted_encodings = request.accepted_encodings
 
-        resp_headers = {}
-        should_close_connection = (
-            headers.get("connection", "") == "close"
-        )
+        resp_headers = HTTPHeaders()
 
+        should_close_connection = (
+            request.headers.has_token("connection", "close")
+        )
         if should_close_connection:
-            resp_headers["connection"] = "close"
+            resp_headers.set("connection", "close")
 
         if method == "POST":
             if not request.target.startswith("/files"):
-                return HttpResponse(HTTPStatusCode.NOT_FOUND, resp_headers), should_close_connection
+                return HttpResponse(HTTPStatusCode.NOT_FOUND, resp_headers, should_close_connection)
             
             filename = request.target.split("/")[-1]
             file_path = Path(f"/{self.root}/{filename}")
+            
             with open(file_path, "w") as file:
                 file.write(request.body)
             
-            return HttpResponse(HTTPStatusCode.CREATED, resp_headers), should_close_connection
+            return HttpResponse(HTTPStatusCode.CREATED, resp_headers, should_close_connection)
 
         # method == GET
         if target == "/":
-            return HttpResponse(HTTPStatusCode.OK, resp_headers), should_close_connection
+            return HttpResponse(HTTPStatusCode.OK, resp_headers, should_close_connection)
         
         elif target.startswith("/files"):
             filename = request.target.split("/")[-1]
             file_path = Path(f"/{self.root}/{filename}")
 
             if not file_path.exists():
-                return HttpResponse(HTTPStatusCode.NOT_FOUND, resp_headers), should_close_connection
+                return HttpResponse(HTTPStatusCode.NOT_FOUND, resp_headers, should_close_connection)
 
             with open(file_path, "r") as file:
                 content = file.read()
 
-            resp_headers["content-type"] = "application/octet-stream"
+            resp_headers.set("content-type", "application/octet-stream")
 
             return HttpResponse(
                 HTTPStatusCode.OK,
                 resp_headers,
                 content,
-            ), should_close_connection
+                should_close_connection
+            )
         
         elif target.startswith("/echo"):
             echo_string = target.split("/")[-1]
-            resp_headers["content-type"] = "text/plain"
+            resp_headers.set("content-type", "text/plain")
             
             if "gzip" in accepted_encodings:
-                resp_headers["content-encoding"] = "gzip"
+                resp_headers.set("content-encoding", "gzip")
                 echo_string = gzip.compress(echo_string.encode())
 
-            return HttpResponse(HTTPStatusCode.OK, resp_headers, echo_string), should_close_connection
+            return HttpResponse(HTTPStatusCode.OK, resp_headers, echo_string, should_close_connection)
         
         elif target == "/user-agent":
-            user_agent_string = headers["user-agent"]
-            resp_headers["content-type"] = "text/plain"
-            return HttpResponse(HTTPStatusCode.OK, resp_headers, user_agent_string), should_close_connection
+            user_agent_string = request.headers.get("user-agent")
+            resp_headers.set("content-type", "text/plain")
+            return HttpResponse(HTTPStatusCode.OK, resp_headers, user_agent_string, should_close_connection)
         
         else:
-            return HttpResponse(HTTPStatusCode.NOT_FOUND, resp_headers), should_close_connection
+            return HttpResponse(HTTPStatusCode.NOT_FOUND, resp_headers, should_close_connection)
 
     def parse_request(self, headers_part: bytes, body_part: bytes) -> HttpRequest:
         headers_text = headers_part.decode()
@@ -141,19 +172,9 @@ class HttpServer:
         method, target, version = request_line.split()
 
         # headers
-        headers = {}
-        for line in lines[1:]:
-            if not line:
-                break
+        headers = HTTPHeaders(lines[1:])
 
-            header, value = line.split(":", maxsplit=1)
-            headers[header.strip().lower()] = value.strip()
-
-        accepted_encodings = []
-        if "accept-encoding" in headers:
-            accepted_encodings = [encoding.strip() for encoding in value.split(",")]
-
-        return HttpRequest(method, target, version, headers, body_part.decode(), accepted_encodings)
+        return HttpRequest(method, target, version, headers, body_part.decode())
         
     def handle_conn(self, conn: socket):
         with conn:
@@ -186,10 +207,12 @@ class HttpServer:
                     body_part += chunk
             
                 request = self.parse_request(headers_part, body_part)
-                response, should_close_connection = self.handle_request(request)
+                response = self.handle_request(request)
                 response_bytes = self.format_response(response)
+                
                 conn.sendall(response_bytes)
-                if should_close_connection:
+                
+                if response.should_close_connection:
                     conn.close()
 
     def start(self):
