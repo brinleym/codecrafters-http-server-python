@@ -1,3 +1,4 @@
+from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from enum import StrEnum
 import gzip
@@ -96,19 +97,24 @@ class HttpResponse:
             headers += f"{name}: {value}".encode() + CRLF
 
         return headers + CRLF + body
+    
+@dataclass
+class HttpServerConfig:
+    root: str = ""
+    
+class HttpRequestHandler(ABC):
+    def __init__(self, config: HttpServerConfig):
+        self.config = config
 
-class HttpServer:
-    def __init__(self, addr: str, port: int, dir: str):
-        self.addr = addr
-        self.port = port
-        self.root = Path(dir)
-        self.sock = socket.create_server((self.addr, self.port), reuse_port=True)
-        self.sock.listen()
-        
-    def handle_request(self, request: HttpRequest) -> HttpResponse:
-        method = request.method
-        target = request.target
+    @abstractmethod
+    def handle(self, equest: HttpRequest) -> HttpResponse:
+        pass
 
+class RootHandler(HttpRequestHandler):
+    def __init__(self, config: HttpServerConfig):
+        super().__init__(config)
+
+    def handle(self, request: HttpRequest) -> HttpResponse:
         resp_headers = HTTPHeaders()
 
         should_close_connection = (
@@ -117,88 +123,166 @@ class HttpServer:
         if should_close_connection:
             resp_headers.set(HttpHeaderName.CONNECTION, "close")
 
-        if method == "POST":
-            if not request.target.startswith("/files"):
-                return HttpResponse(
-                    status=HTTPStatusCode.NOT_FOUND, 
-                    headers=resp_headers, 
-                    should_close_connection=should_close_connection
-                )
-            
+        return HttpResponse(
+            status=HTTPStatusCode.OK, 
+            headers=resp_headers, 
+            should_close_connection=should_close_connection
+        )
+    
+class FileGetHandler(HttpRequestHandler):
+    def __init__(self, config: HttpServerConfig):
+        super().__init__(config)
+
+    def handle(self, request: HttpRequest) -> HttpResponse:
+        resp_headers = HTTPHeaders()
+
+        should_close_connection = (
+            request.headers.has_token(HttpHeaderName.CONNECTION, "close")
+        )
+        if should_close_connection:
+            resp_headers.set(HttpHeaderName.CONNECTION, "close")
+
             filename = request.target.split("/")[-1]
-            file_path = Path(f"/{self.root}/{filename}")
-            
-            with open(file_path, "w") as file:
-                file.write(request.body)
-            
-            return HttpResponse(
-                status=HTTPStatusCode.CREATED, 
-                headers=resp_headers, 
-                should_close_connection=should_close_connection
-            )
+            file_path = Path(f"/{self.config.root}/{filename}")
 
-        # method == GET
-        if target == "/":
-            return HttpResponse(
-                status=HTTPStatusCode.OK, 
-                headers=resp_headers, 
-                should_close_connection=should_close_connection
-            )
-        
-        elif target.startswith("/files"):
-            filename = request.target.split("/")[-1]
-            file_path = Path(f"/{self.root}/{filename}")
-
-            if not file_path.exists():
-                return HttpResponse(
-                    status=HTTPStatusCode.NOT_FOUND, 
-                    headers=resp_headers, 
-                    should_close_connection=should_close_connection
-                )
-
-            with open(file_path, "r") as file:
-                content = file.read()
-
-            resp_headers.set(HttpHeaderName.CONTENT_TYPE, "application/octet-stream")
-
-            return HttpResponse(
-                status=HTTPStatusCode.OK,
-                headers=resp_headers,
-                body=content,
-                should_close_connection=should_close_connection
-            )
-        
-        elif target.startswith("/echo"):
-            echo_string = target.split("/")[-1]
-            resp_headers.set(HttpHeaderName.CONTENT_TYPE, "text/plain")
-            
-            if "gzip" in request.accepted_encodings():
-                resp_headers.set(HttpHeaderName.CONTENT_ENCODING, "gzip")
-                echo_string = gzip.compress(echo_string.encode())
-
-            return HttpResponse(
-                status=HTTPStatusCode.OK, 
-                headers=resp_headers, 
-                body=echo_string, 
-                should_close_connection=should_close_connection
-            )
-        
-        elif target == "/user-agent":
-            user_agent_string = request.headers.get(HttpHeaderName.USER_AGENT)
-            resp_headers.set(HttpHeaderName.CONTENT_TYPE, "text/plain")
-            return HttpResponse(
-                status=HTTPStatusCode.OK, 
-                headers=resp_headers, 
-                body=user_agent_string, 
-                should_close_connection=should_close_connection
-            )
-        
-        else:
+        if not file_path.exists():
             return HttpResponse(
                 status=HTTPStatusCode.NOT_FOUND, 
                 headers=resp_headers, 
                 should_close_connection=should_close_connection
             )
+
+        with open(file_path, "r") as file:
+            content = file.read()
+
+        resp_headers.set(HttpHeaderName.CONTENT_TYPE, "application/octet-stream")
+
+        return HttpResponse(
+            status=HTTPStatusCode.OK,
+            headers=resp_headers,
+            body=content,
+            should_close_connection=should_close_connection
+        )
+    
+class FilePostHandler(HttpRequestHandler):
+    def __init__(self, config: HttpServerConfig):
+        super().__init__(config)
+
+    def handle(self, request: HttpRequest) -> HttpResponse:
+        resp_headers = HTTPHeaders()
+
+        should_close_connection = (
+            request.headers.has_token(HttpHeaderName.CONNECTION, "close")
+        )
+        if should_close_connection:
+            resp_headers.set(HttpHeaderName.CONNECTION, "close")
+
+        filename = request.target.split("/")[-1]
+        file_path = Path(f"/{self.config.root}/{filename}")
+        
+        with open(file_path, "w") as file:
+            file.write(request.body)
+        
+        return HttpResponse(
+            status=HTTPStatusCode.CREATED, 
+            headers=resp_headers, 
+            should_close_connection=should_close_connection
+        )
+    
+class EchoHandler(HttpRequestHandler):
+    def __init__(self, config: HttpServerConfig):
+        super().__init__(config)
+
+    def handle(self, request: HttpRequest) -> HttpResponse:
+        resp_headers = HTTPHeaders()
+
+        should_close_connection = (
+            request.headers.has_token(HttpHeaderName.CONNECTION, "close")
+        )
+        if should_close_connection:
+            resp_headers.set(HttpHeaderName.CONNECTION, "close")
+
+        echo_string = request.target.split("/")[-1]
+        resp_headers.set(HttpHeaderName.CONTENT_TYPE, "text/plain")
+        
+        if "gzip" in request.accepted_encodings():
+            resp_headers.set(HttpHeaderName.CONTENT_ENCODING, "gzip")
+            echo_string = gzip.compress(echo_string.encode())
+
+        return HttpResponse(
+            status=HTTPStatusCode.OK, 
+            headers=resp_headers, 
+            body=echo_string, 
+            should_close_connection=should_close_connection
+        )
+    
+class UserAgentHandler(HttpRequestHandler):
+    def __init__(self, config: HttpServerConfig):
+        super().__init__(config)
+
+    def handle(self, request: HttpRequest) -> HttpResponse:
+        resp_headers = HTTPHeaders()
+
+        should_close_connection = (
+            request.headers.has_token(HttpHeaderName.CONNECTION, "close")
+        )
+        if should_close_connection:
+            resp_headers.set(HttpHeaderName.CONNECTION, "close")
+        
+        user_agent_string = request.headers.get(HttpHeaderName.USER_AGENT)
+        resp_headers.set(HttpHeaderName.CONTENT_TYPE, "text/plain")
+        return HttpResponse(
+            status=HTTPStatusCode.OK, 
+            headers=resp_headers, 
+            body=user_agent_string, 
+            should_close_connection=should_close_connection
+        )
+    
+class NotFoundHandler(HttpRequestHandler):
+    def __init__(self, config: HttpServerConfig):
+        super().__init__(config)
+
+    def handle(self, request: HttpRequest) -> HttpResponse:
+        resp_headers = HTTPHeaders()
+
+        should_close_connection = (
+            request.headers.has_token(HttpHeaderName.CONNECTION, "close")
+        )
+        if should_close_connection:
+            resp_headers.set(HttpHeaderName.CONNECTION, "close")
+
+        return HttpResponse(
+            status=HTTPStatusCode.NOT_FOUND, 
+            headers=resp_headers, 
+            should_close_connection=should_close_connection
+        )
+    
+class RequestHandlerFactory:
+    def __init__(self):
+        pass
+
+    def create(request: HttpRequest, config: HttpServerConfig) -> HttpRequestHandler:
+        if request.target == "/":
+            return RootHandler(config)
+        elif request.target.startswith("/files") and request.method == "GET":
+            return FileGetHandler(config)
+        elif request.target.startswith("/files") and request.method == "POST":
+            return FilePostHandler(config)
+        elif request.target.startswith("/echo"):
+            return EchoHandler(config)
+        elif request.target == "/user-agent":
+            return UserAgentHandler(config)
+        else:
+            return NotFoundHandler(config)
+
+class HttpServer:
+    def __init__(self, addr: str, port: int, config: HttpServerConfig):
+        self.addr = addr
+        self.port = port
+        self.config = config
+        self.request_handler_factory = RequestHandlerFactory()
+        self.sock = socket.create_server((self.addr, self.port), reuse_port=True)
+        self.sock.listen()
 
     def parse_request(self, headers_part: bytes, body_part: bytes) -> HttpRequest:
         headers_text = headers_part.decode()
@@ -245,7 +329,8 @@ class HttpServer:
                     body_part += chunk
             
                 request = self.parse_request(headers_part, body_part)
-                response = self.handle_request(request)
+                request_handler = self.request_handler_factory.create(request)
+                response = request_handler.handle(request)
                 
                 conn.sendall(response.serialize())
                 
@@ -269,7 +354,8 @@ def main():
         root = arg2
     
     # Setup HTTP server
-    server = HttpServer("localhost", 4221, root)
+    config = HttpServerConfig(root=Path(root))
+    server = HttpServer(addr="localhost", port=4221, config=config)
     server.start()
 
 if __name__ == "__main__":
