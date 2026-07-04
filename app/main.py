@@ -334,7 +334,7 @@ class HttpServer:
                 conn.sendall(response.serialize())
                 
                 if response.should_close_connection:
-                    conn.close()
+                    break
 
     def start(self):
         self.sock.listen()
