@@ -24,6 +24,10 @@ class HttpHeaderName(StrEnum):
     CONTENT_TYPE = "content-type"
     USER_AGENT = "user-agent"
 
+class HttpMethod(StrEnum):
+    GET = "GET"
+    POST = "POST"
+
 @dataclass
 class HTTPHeaders:
     headers: dict[str, str] = field(default_factory=dict)
@@ -232,9 +236,9 @@ class RequestHandlerFactory:
     def create(self, request: HttpRequest, config: HttpServerConfig) -> HttpRequestHandler:
         if request.target == "/":
             return RootHandler(config)
-        elif request.target.startswith("/files") and request.method == "GET":
+        elif request.target.startswith("/files") and request.method == HttpMethod.GET:
             return FileGetHandler(config)
-        elif request.target.startswith("/files") and request.method == "POST":
+        elif request.target.startswith("/files") and request.method == HttpMethod.POST:
             return FilePostHandler(config)
         elif request.target.startswith("/echo"):
             return EchoHandler(config)
