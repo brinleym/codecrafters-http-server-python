@@ -282,7 +282,6 @@ class HttpServer:
         self.config = config
         self.request_handler_factory = RequestHandlerFactory()
         self.sock = socket.create_server((self.addr, self.port), reuse_port=True)
-        self.sock.listen()
 
     def parse_request(self, headers_part: bytes, body_part: bytes) -> HttpRequest:
         headers_text = headers_part.decode()
@@ -338,6 +337,7 @@ class HttpServer:
                     conn.close()
 
     def start(self):
+        self.sock.listen()
         with self.sock:
             while True:
                 conn, _ = self.sock.accept()
