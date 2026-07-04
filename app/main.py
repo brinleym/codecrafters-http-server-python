@@ -249,7 +249,7 @@ class HttpServer:
         self.port = port
         self.config = config
         self.request_handler_factory = RequestHandlerFactory()
-        self.sock = socket.create_server((self.addr, self.port), reuse_port=True)
+        self.sock = socket.create_server((self.addr, self.port), reuse_port=True) # bind socket to (addr, port)
 
     def parse_request(self, headers_part: bytes, body_part: bytes) -> HttpRequest:
         headers_text = headers_part.decode()
