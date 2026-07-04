@@ -142,8 +142,8 @@ class FileGetHandler(HttpRequestHandler):
         if should_close_connection:
             resp_headers.set(HttpHeaderName.CONNECTION, "close")
 
-            filename = request.target.split("/")[-1]
-            file_path = Path(f"/{self.config.root}/{filename}")
+        filename = request.target.split("/")[-1]
+        file_path = Path(f"/{self.config.root}/{filename}")
 
         if not file_path.exists():
             return HttpResponse(
