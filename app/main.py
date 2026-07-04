@@ -107,7 +107,7 @@ class HttpRequestHandler(ABC):
         self.config = config
 
     @abstractmethod
-    def handle(self, equest: HttpRequest) -> HttpResponse:
+    def handle(self, request: HttpRequest) -> HttpResponse:
         pass
 
 class RootHandler(HttpRequestHandler):
@@ -329,7 +329,7 @@ class HttpServer:
                     body_part += chunk
             
                 request = self.parse_request(headers_part, body_part)
-                request_handler = self.request_handler_factory.create(request)
+                request_handler = self.request_handler_factory.create(request, self.config)
                 response = request_handler.handle(request)
                 
                 conn.sendall(response.serialize())
