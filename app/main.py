@@ -261,7 +261,7 @@ class RequestHandlerFactory:
     def __init__(self):
         pass
 
-    def create(request: HttpRequest, config: HttpServerConfig) -> HttpRequestHandler:
+    def create(self, request: HttpRequest, config: HttpServerConfig) -> HttpRequestHandler:
         if request.target == "/":
             return RootHandler(config)
         elif request.target.startswith("/files") and request.method == "GET":
