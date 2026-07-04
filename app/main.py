@@ -80,7 +80,6 @@ class HttpResponse:
     status: HTTPStatusCode
     headers: HTTPHeaders
     body: Union[str, bytes] = field(default_factory=str)
-    should_close_connection: bool = False
 
     def serialize(self) -> bytes:
         body = (
@@ -110,11 +109,7 @@ class HttpRequestHandler(ABC):
     def handle(self, request: HttpRequest) -> HttpResponse:
         pass
 
-class RootHandler(HttpRequestHandler):
-    def __init__(self, config: HttpServerConfig):
-        super().__init__(config)
-
-    def handle(self, request: HttpRequest) -> HttpResponse:
+    def add_common_headers(self, request: HttpRequest) -> HTTPHeaders:
         resp_headers = HTTPHeaders()
 
         should_close_connection = (
@@ -123,10 +118,19 @@ class RootHandler(HttpRequestHandler):
         if should_close_connection:
             resp_headers.set(HttpHeaderName.CONNECTION, "close")
 
+        return resp_headers
+
+
+class RootHandler(HttpRequestHandler):
+    def __init__(self, config: HttpServerConfig):
+        super().__init__(config)
+
+    def handle(self, request: HttpRequest) -> HttpResponse:
+        resp_headers = self.add_common_headers(request)
+
         return HttpResponse(
             status=HTTPStatusCode.OK, 
-            headers=resp_headers, 
-            should_close_connection=should_close_connection
+            headers=resp_headers
         )
     
 class FileGetHandler(HttpRequestHandler):
@@ -134,13 +138,7 @@ class FileGetHandler(HttpRequestHandler):
         super().__init__(config)
 
     def handle(self, request: HttpRequest) -> HttpResponse:
-        resp_headers = HTTPHeaders()
-
-        should_close_connection = (
-            request.headers.has_token(HttpHeaderName.CONNECTION, "close")
-        )
-        if should_close_connection:
-            resp_headers.set(HttpHeaderName.CONNECTION, "close")
+        resp_headers = self.add_common_headers(request)
 
         filename = request.target.split("/")[-1]
         file_path = Path(f"/{self.config.root}/{filename}")
@@ -148,8 +146,7 @@ class FileGetHandler(HttpRequestHandler):
         if not file_path.exists():
             return HttpResponse(
                 status=HTTPStatusCode.NOT_FOUND, 
-                headers=resp_headers, 
-                should_close_connection=should_close_connection
+                headers=resp_headers
             )
 
         with open(file_path, "r") as file:
@@ -160,8 +157,7 @@ class FileGetHandler(HttpRequestHandler):
         return HttpResponse(
             status=HTTPStatusCode.OK,
             headers=resp_headers,
-            body=content,
-            should_close_connection=should_close_connection
+            body=content
         )
     
 class FilePostHandler(HttpRequestHandler):
@@ -169,13 +165,7 @@ class FilePostHandler(HttpRequestHandler):
         super().__init__(config)
 
     def handle(self, request: HttpRequest) -> HttpResponse:
-        resp_headers = HTTPHeaders()
-
-        should_close_connection = (
-            request.headers.has_token(HttpHeaderName.CONNECTION, "close")
-        )
-        if should_close_connection:
-            resp_headers.set(HttpHeaderName.CONNECTION, "close")
+        resp_headers = self.add_common_headers(request)
 
         filename = request.target.split("/")[-1]
         file_path = Path(f"/{self.config.root}/{filename}")
@@ -185,8 +175,7 @@ class FilePostHandler(HttpRequestHandler):
         
         return HttpResponse(
             status=HTTPStatusCode.CREATED, 
-            headers=resp_headers, 
-            should_close_connection=should_close_connection
+            headers=resp_headers
         )
     
 class EchoHandler(HttpRequestHandler):
@@ -194,13 +183,7 @@ class EchoHandler(HttpRequestHandler):
         super().__init__(config)
 
     def handle(self, request: HttpRequest) -> HttpResponse:
-        resp_headers = HTTPHeaders()
-
-        should_close_connection = (
-            request.headers.has_token(HttpHeaderName.CONNECTION, "close")
-        )
-        if should_close_connection:
-            resp_headers.set(HttpHeaderName.CONNECTION, "close")
+        resp_headers = self.add_common_headers(request)
 
         echo_string = request.target.split("/")[-1]
         resp_headers.set(HttpHeaderName.CONTENT_TYPE, "text/plain")
@@ -212,8 +195,7 @@ class EchoHandler(HttpRequestHandler):
         return HttpResponse(
             status=HTTPStatusCode.OK, 
             headers=resp_headers, 
-            body=echo_string, 
-            should_close_connection=should_close_connection
+            body=echo_string
         )
     
 class UserAgentHandler(HttpRequestHandler):
@@ -221,21 +203,14 @@ class UserAgentHandler(HttpRequestHandler):
         super().__init__(config)
 
     def handle(self, request: HttpRequest) -> HttpResponse:
-        resp_headers = HTTPHeaders()
-
-        should_close_connection = (
-            request.headers.has_token(HttpHeaderName.CONNECTION, "close")
-        )
-        if should_close_connection:
-            resp_headers.set(HttpHeaderName.CONNECTION, "close")
+        resp_headers = self.add_common_headers(request)
         
         user_agent_string = request.headers.get(HttpHeaderName.USER_AGENT)
         resp_headers.set(HttpHeaderName.CONTENT_TYPE, "text/plain")
         return HttpResponse(
             status=HTTPStatusCode.OK, 
             headers=resp_headers, 
-            body=user_agent_string, 
-            should_close_connection=should_close_connection
+            body=user_agent_string
         )
     
 class NotFoundHandler(HttpRequestHandler):
@@ -243,18 +218,11 @@ class NotFoundHandler(HttpRequestHandler):
         super().__init__(config)
 
     def handle(self, request: HttpRequest) -> HttpResponse:
-        resp_headers = HTTPHeaders()
-
-        should_close_connection = (
-            request.headers.has_token(HttpHeaderName.CONNECTION, "close")
-        )
-        if should_close_connection:
-            resp_headers.set(HttpHeaderName.CONNECTION, "close")
+        resp_headers = self.add_common_headers(request)
 
         return HttpResponse(
             status=HTTPStatusCode.NOT_FOUND, 
-            headers=resp_headers, 
-            should_close_connection=should_close_connection
+            headers=resp_headers
         )
     
 class RequestHandlerFactory:
@@ -333,8 +301,8 @@ class HttpServer:
                 
                 conn.sendall(response.serialize())
                 
-                if response.should_close_connection:
-                    break
+                if response.headers.has_token(HttpHeaderName.CONNECTION, "close"):
+                    break # close connection
 
     def start(self):
         self.sock.listen()
