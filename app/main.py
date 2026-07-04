@@ -145,7 +145,7 @@ class FileGetHandler(HttpRequestHandler):
         resp_headers = self.add_common_headers(request)
 
         filename = request.target.split("/")[-1]
-        file_path = Path(f"/{self.config.root}/{filename}")
+        file_path = Path(f"{self.config.root}/{filename}")
 
         if not file_path.exists():
             return HttpResponse(
@@ -172,7 +172,7 @@ class FilePostHandler(HttpRequestHandler):
         resp_headers = self.add_common_headers(request)
 
         filename = request.target.split("/")[-1]
-        file_path = Path(f"/{self.config.root}/{filename}")
+        file_path = Path(f"{self.config.root}/{filename}")
         
         with open(file_path, "w") as file:
             file.write(request.body)
@@ -317,7 +317,7 @@ class HttpServer:
                 thread.start()
 
 def main():
-    root = "/"
+    root = ""
     # Parse arguments
     if len(sys.argv) > 2:
         arg1, arg2 = sys.argv[1], sys.argv[2]
@@ -326,7 +326,7 @@ def main():
         root = arg2
     
     # Setup HTTP server
-    config = HttpServerConfig(root=Path(root))
+    config = HttpServerConfig(root=Path(f"{root}"))
     server = HttpServer(addr="localhost", port=4221, config=config)
     server.start()
 
