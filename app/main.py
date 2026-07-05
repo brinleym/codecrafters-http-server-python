@@ -326,7 +326,7 @@ def main():
         root = arg2
     
     # Setup HTTP server
-    config = HttpServerConfig(root=Path(f"{root}"))
+    config = HttpServerConfig(root=Path(f"./{root}"))
     server = HttpServer(addr="localhost", port=4221, config=config)
     server.start()
 
