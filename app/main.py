@@ -103,6 +103,8 @@ class HttpResponse:
     
 @dataclass
 class HttpServerConfig:
+    addr: str
+    port: str
     root: str = ""
     
 class HttpRequestHandler(ABC):
@@ -248,12 +250,10 @@ class RequestHandlerFactory:
             return NotFoundHandler(config)
 
 class HttpServer:
-    def __init__(self, addr: str, port: int, config: HttpServerConfig):
-        self.addr = addr
-        self.port = port
+    def __init__(self, config: HttpServerConfig):
         self.config = config
         self.request_handler_factory = RequestHandlerFactory()
-        self.sock = socket.create_server((self.addr, self.port), reuse_port=True) # bind socket to (addr, port)
+        self.sock = socket.create_server((self.config.addr, self.config.port), reuse_port=True) # bind socket to (addr, port)
 
     def parse_request(self, headers_part: bytes, body_part: bytes) -> HttpRequest:
         headers_text = headers_part.decode()
@@ -326,8 +326,8 @@ def main():
         root = arg2
     
     # Setup HTTP server
-    config = HttpServerConfig(root=Path(root))
-    server = HttpServer(addr="localhost", port=4221, config=config)
+    config = HttpServerConfig(addr="localhost", port=4221, root=Path(root))
+    server = HttpServer(config=config)
     server.start()
 
 if __name__ == "__main__":
