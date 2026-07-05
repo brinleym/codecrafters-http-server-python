@@ -38,7 +38,7 @@ class HTTPHeaders:
                 break
 
             name, value = line.split(":", maxsplit=1)
-            self.headers[name.strip().lower()] = value.strip()
+            self.headers[self._normalize(name)] = self._normalize(value)
 
     def contains(self, name: str) -> bool:
         return self._normalize(name) in self.headers
