@@ -105,7 +105,7 @@ class HttpResponse:
 class HttpServerConfig:
     addr: str
     port: str
-    root: str = ""
+    root: Path
     
 class HttpRequestHandler(ABC):
     def __init__(self, config: HttpServerConfig):
