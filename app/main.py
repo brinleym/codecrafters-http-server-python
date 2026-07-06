@@ -155,7 +155,7 @@ class FileGetHandler(HttpRequestHandler):
                 headers=resp_headers
             )
 
-        with open(file_path, "r") as file:
+        with open(file_path, "rb") as file:
             content = file.read()
 
         resp_headers.set(HttpHeaderName.CONTENT_TYPE, "application/octet-stream")
